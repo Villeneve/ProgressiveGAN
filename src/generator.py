@@ -1,55 +1,53 @@
 import keras.layers as lay
 import keras
+import tensorflow as tf
+import numpy as np
 
-def block_conv(x,n_filters):
-    x = lay.Conv2D(
-        filters=n_filters,
-        kernel_size=(3,3),
-        strides=(1,1),
-        padding='same',
-        activation='leaky_relu'
-    )(x)
-    x = lay.Conv2D(
-        filters=n_filters,
-        kernel_size=(3,3),
-        strides=(1,1),
-        padding='same',
-        activation='leaky_relu'
-    )(x)
-    x = lay.UpSampling2D(
-        size=(2,2)
-    )(x)
-    return x
+class Generator(keras.Model):
+    def __init__(self,input_shape=(128,),n_convs=8, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.input_shape = input_shape
+        self.n_convs = n_convs
+        self.upsampling = [lay.UpSampling2D(size=(2,2),interpolation='bicubic',name=f'upsampling_{i}') for i in range(3)]
+        self.reshape = lay.Reshape(target_shape=(4,4,512))
+        # self.conv_layers = [lay.Conv2D(filters=2**i,kernel_size=(3,3),strides=(1,1),padding='same',activation='leaky_relu', name=f'conv_{i}') for i in range(8,0,-1)]
+        # self.dense_layer = lay.Dense(units=4*4*512,input_shape=input_shape,activation='leaky_relu',name='brain')
+        # self.toRGB = [lay.Conv2D(filters=3,kernel_size=(1,1),strides=(1,1),padding='same',activation='tanh',name=f'toRGB_{i}') for i in range(4)]
 
-def toRGB(x):
-    x = lay.Conv2D(
-        filters=3,
-        kernel_size=(1,1),
-        strides=(1,1),
-        padding='same',
-        activation='tanh',
-    )(x)
-    return x
 
-def fade_in(from_layer,to_layer,alpha=0.):
-    return (1-alpha)*from_layer + alpha*to_layer
+    def build(self,input_shape):
+        super().build(input_shape)
+        self.conv_layers = []
+        for i in range(self.n_convs):
+            for _ in range(2):
+                self.conv_layers.append(
+                    lay.Conv2D(
+                        filters=2**i,
+                        kernel_size=(3,3),
+                        strides=(1,1),
+                        padding='same',
+                        activation='leaky_relu',
+                    )
+                )
+        self.dense_layer = lay.Dense(units=4*4*512,input_shape=input_shape,activation='leaky_relu',name='brain')
+        self.toRGB = [lay.Conv2D(filters=3,kernel_size=(1,1),strides=(1,1),padding='same',activation='tanh',name=f'toRGB_{i}') for i in range(4)]
 
-def create_generator(input_shape=128):
-    inputs = lay.Input(shape=(input_shape,))
-    x = inputs
+    def call(self,inputs,resolution=4.,fade=0.):
+        resolution=int(np.log2(resolution)-2)
+        x = self.dense_layer(inputs)
+        x = self.reshape(x)
+        if resolution == 0:
+            if fade <= 0.:
+                self.toRGB[resolution](x)
+            elif fade > 0. and fade < 1.:
+                x = self.upsampling[resolution]
+                out1 = self.toRGB[resolution](x)
+                out2 = self.conv_layers[2*resolution](x)
+                out2 = self.conv_layers[2*resolution+1](out2)
+                
+            else:
 
-    x = lay.Dense(4*4*512,activation='leaky_relu')(inputs)
-    x = lay.Reshape(target_shape=(4,4,512))(x)
-    out4x4 = toRGB(x)
-
-    x = block_conv(x,256)
-    out8x8 = toRGB(x)
-
-    x = block_conv(x,128)
-    out16x16 = toRGB(x)
-
-    x = block_conv(x,64)
-    out32x32 = toRGB(x)
-
-    return keras.Model(inputs,[out4x4,out8x8,out16x16,out32x32])
-
+        return x
+    
+    def predict_on_batch(self,inputs,resolution):
+        return self(inputs=inputs,resolution=resolution)
