@@ -33,20 +33,24 @@ class Generator(keras.Model):
         self.toRGB = [lay.Conv2D(filters=3,kernel_size=(1,1),strides=(1,1),padding='same',activation='tanh',name=f'toRGB_{i}') for i in range(4)]
 
     def call(self,inputs,resolution=4.,fade=0.):
-        resolution=int(np.log2(resolution)-2)
+        resolution=int(np.log2(resolution))
         x = self.dense_layer(inputs)
         x = self.reshape(x)
-        if resolution == 0:
-            if fade <= 0.:
-                self.toRGB[resolution](x)
-            elif fade > 0. and fade < 1.:
-                x = self.upsampling[resolution]
-                out1 = self.toRGB[resolution](x)
-                out2 = self.conv_layers[2*resolution](x)
-                out2 = self.conv_layers[2*resolution+1](out2)
-                
+        for i in range(resolution-1):
+            if i == resolution-2:
+                if fade==0.:
+                    x = self.toRGB[i](x)
+                else:
+                    x = self.upsampling[i](x)
+                    out1 = self.toRGB[i](x)
+                    out2 = self.conv_layers[2*i](x)
+                    out2 = self.conv_layers[2*i+1](out2)
+                    out2 = self.toRGB[i+1](out2)
+                    x = (1-fade)*out1 + fade*out2
             else:
-
+                x = self.upsampling[i](x)
+                x = self.conv_layers[2*i](x)
+                x = self.conv_layers[2*i+1](x)
         return x
     
     def predict_on_batch(self,inputs,resolution):
