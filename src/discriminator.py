@@ -1,14 +1,11 @@
 import keras.layers as lay
 import keras
+import numpy as np
 
-def fromRGB(x,label=1):
-    x = lay.Conv2D(
-        filters=
-    )(x)
+class Discriminator(keras.Model):
+    def __init__(self, resolution=4.,*args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-
-def create_discriminator():
-    input4x4 = keras.Input((4,4,3))
-    input8x8 = keras.Input((8,8,3))
-    input16x16 = keras.Input((16,16,3))
-    input32x32 = keras.Input((32,32,3))
+        self.n_convs = int(np.log2(resolution))
+        self.dense = lay.Dense(1,activation='sigmoid',name='classifier_head')
+        self.convs = [lay.Conv2D(filters=32,kernel_size=(3,3),strides=(1,1),padding='same',activation='leaky_relu') for i in range(1)]
