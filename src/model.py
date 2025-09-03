@@ -91,3 +91,5 @@ class Generator(keras.Model):
         s32 = self.fade_in[2]([self.toRGB[2](up32),x32])
         
         return [s4,s8,s16,s32]
+    
+
