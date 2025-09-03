@@ -136,7 +136,7 @@ class Discriminator(keras.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.dsample = [lay.AvgPool2D((2,2),name=f'downsample{i}') for i in [16,8,4]]
+        self.dsample = [lay.AvgPool2D((2,2),name=f'downsample{i}') for i in ['4_0','4_1','8_0','8_1','16_0','16_1',]]
         self.brain = lay.Dense(1,activation='sigmoid',name='Brain')
         self.fade_in = [Fade_in(name=f'fade_in({i})') for i in ['4_8','8_16','16_32']]
         self.stage = tf.Variable(0, dtype=tf.uint32, trainable=False)
@@ -186,5 +186,27 @@ class Discriminator(keras.Model):
             x = self.brain(x)
             return x
         
-        return tf.switch_case(self.stage.read_value(),[lambda: forward_4x4(inputs)])
+        def forward_8x8(inputs):
+            # New path
+            x = self.fromRGB[1](inputs)
+            x = self.conv2[2](x)
+            x = self.conv2[3](x)
+            s8 = self.dsample[0](x)
+            # Old path
+            x = self.dsample[1](inputs)
+            s4 = self.fromRGB[0](x)
+
+            x = self.fade_in[0]([s4,s8])
+            x = self.conv2[0](x)
+            x = self.conv2[1](x)
+            x = self.flat(x)
+            x = self.brain(x)
+            return x
+        
+        branch_fn = [
+            lambda: forward_4x4(inputs),
+            lambda: forward_8x8(inputs),
+        ]
+        
+        return tf.switch_case(self.stage.read_value(),branch_fn)
         
