@@ -106,6 +106,8 @@ class Discriminator(keras.Model):
                 name=f'fromRGB{i}'
             ) for i in [4,8,16,32]
         ]
+
+        # Camadas convolucionais
         self.conv2 = []
         for i in [4,8,16,32]:
             self.conv2.append(
