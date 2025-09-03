@@ -82,7 +82,7 @@ class Generator(keras.Model):
         self.toRGB[3].build((None,32,32,128))
 
 
-    def call(self, inputs, *args, **kwargs):
+    def call(self, inputs, stage=0,*args, **kwargs):
         
         # Forward pass para 4x4;
         def forward_4x4(inputs):
@@ -143,11 +143,7 @@ class Generator(keras.Model):
             s32 = self.toRGB[3](x)
             return self.fade_in[2]([s16,s32])
         
-        branch_fn =[
-            lambda: forward_4x4(inputs),
-            lambda: forward_8x8(inputs),
-            lambda: forward_16x16(inputs),
-            lambda: forward_32x32(inputs)
-        ]
-        
-        return tf.switch_case(self.stage.read_value(),branch_fn)
+        if stage == 0: return forward_4x4(inputs)
+        elif stage == 1: return forward_8x8(inputs)
+        elif stage == 2: return forward_16x16(inputs)
+        elif stage == 3: return forward_32x32(inputs)

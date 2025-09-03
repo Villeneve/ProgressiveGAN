@@ -13,12 +13,12 @@ class Discriminator(keras.Model):
         self.fade_in = [Fade_in(name=f'fade_in_{i}') for i in ['4_8','8_16','16_32']]
         self.stage = tf.Variable(0, dtype=tf.int32, trainable=False)
         self.fromRGB = [
-            lay.SpectralNormalization(lay.Conv2D(
+            lay.Conv2D(
                 filters=128,
                 kernel_size=(3,3),
                 strides=(1,1),
                 padding='same',
-                activation='leaky_relu'),
+                activation='leaky_relu',
                 name=f'fromRGB{i}'
             ) for i in [4,8,16,32]
         ]
@@ -27,22 +27,22 @@ class Discriminator(keras.Model):
         self.conv2 = []
         for i in [4,8,16,32]:
             self.conv2.append(
-                lay.SpectralNormalization(lay.Conv2D(
+                lay.Conv2D(
                     filters=128,
                     kernel_size=(3,3),
                     strides=(1,1),
                     padding='same',
-                    activation='leaky_relu'),
+                    activation='leaky_relu',
                     name=f'block{i}_conv0'
                 )
             )
             self.conv2.append(
-                lay.SpectralNormalization(lay.Conv2D(
+                lay.Conv2D(
                     filters=128,
                     kernel_size=(3,3),
                     strides=(1,1),
                     padding='same',
-                    activation='leaky_relu'),
+                    activation='leaky_relu',
                     name=f'block{i}_conv1'
                 )
             )
@@ -69,7 +69,7 @@ class Discriminator(keras.Model):
         self.fromRGB[3].build((None,32,32,3))
         # build fade layers
 
-    def call(self, inputs, *args, **kwargs):
+    def call(self, inputs, stage=0,*args, **kwargs):
         def forward_4x4(inputs):
             x = self.fromRGB[0](inputs) # (None,4,4,128)
             x = self.conv2[0](x)        # (None,4,4,128)
@@ -138,11 +138,7 @@ class Discriminator(keras.Model):
             x = self.brain(x)
             return x
         
-        branch_fn = [
-            lambda: forward_4x4(inputs),
-            lambda: forward_8x8(inputs),
-            lambda: forward_16x16(inputs),
-            lambda: forward_32x32(inputs),
-        ]
-        
-        return tf.switch_case(self.stage.read_value(),branch_fn)
+        if stage == 0: return forward_4x4(inputs)
+        elif stage == 1: return forward_8x8(inputs)
+        elif stage == 2: return forward_16x16(inputs)
+        elif stage == 3: return forward_32x32(inputs)
