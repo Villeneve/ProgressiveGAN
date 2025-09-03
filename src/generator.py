@@ -53,13 +53,13 @@ class Generator(keras.Model):
         self.fade_in = []
         for i in ['4_8','8_16','16_32']:
             self.fade_in.append(
-                Fade_in(name=f'fade_in({i})')
+                Fade_in(name=f'fade_in{i}')
             )
         
         # Cérebro do gerador
         self.brain = lay.Dense(4*4*512,activation='leaky_relu',name='Brain')
         self.reshape = lay.Reshape((4,4,512),name='Reshape')
-        self.stage = tf.Variable(0, dtype=tf.uint32, trainable=False)
+        self.stage = tf.Variable(0, dtype=tf.int32, trainable=False)
 
 
     def build(self):

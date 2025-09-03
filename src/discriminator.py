@@ -10,15 +10,15 @@ class Discriminator(keras.Model):
 
         self.dsample = [lay.AvgPool2D((2,2),name=f'downsample{i}') for i in ['4_0','4_1','8_0','8_1','16_0','16_1',]]
         self.brain = lay.Dense(1,activation='sigmoid',name='Brain')
-        self.fade_in = [Fade_in(name=f'fade_in({i})') for i in ['4_8','8_16','16_32']]
-        self.stage = tf.Variable(0, dtype=tf.uint32, trainable=False)
+        self.fade_in = [Fade_in(name=f'fade_in_{i}') for i in ['4_8','8_16','16_32']]
+        self.stage = tf.Variable(0, dtype=tf.int32, trainable=False)
         self.fromRGB = [
-            lay.Conv2D(
+            lay.SpectralNormalization(lay.Conv2D(
                 filters=128,
                 kernel_size=(3,3),
                 strides=(1,1),
                 padding='same',
-                activation='leaky_relu',
+                activation='leaky_relu'),
                 name=f'fromRGB{i}'
             ) for i in [4,8,16,32]
         ]
@@ -27,22 +27,22 @@ class Discriminator(keras.Model):
         self.conv2 = []
         for i in [4,8,16,32]:
             self.conv2.append(
-                lay.Conv2D(
+                lay.SpectralNormalization(lay.Conv2D(
                     filters=128,
                     kernel_size=(3,3),
                     strides=(1,1),
                     padding='same',
-                    activation='leaky_relu',
+                    activation='leaky_relu'),
                     name=f'block{i}_conv0'
                 )
             )
             self.conv2.append(
-                lay.Conv2D(
+                lay.SpectralNormalization(lay.Conv2D(
                     filters=128,
                     kernel_size=(3,3),
                     strides=(1,1),
                     padding='same',
-                    activation='leaky_relu',
+                    activation='leaky_relu'),
                     name=f'block{i}_conv1'
                 )
             )
@@ -71,24 +71,24 @@ class Discriminator(keras.Model):
 
     def call(self, inputs, *args, **kwargs):
         def forward_4x4(inputs):
-            x = self.fromRGB[0](inputs)
-            x = self.conv2[0](x)
-            x = self.conv2[1](x)
-            x = self.flat(x)
-            x = self.brain(x)
+            x = self.fromRGB[0](inputs) # (None,4,4,128)
+            x = self.conv2[0](x)        # (None,4,4,128)
+            x = self.conv2[1](x)        # (None,4,4,128)
+            x = self.flat(x)            # (None,2048)
+            x = self.brain(x)           # (None,1)
             return x
         
         def forward_8x8(inputs):
             # New path
-            x = self.fromRGB[1](inputs)
-            x = self.conv2[2](x)
-            x = self.conv2[3](x)
-            s8 = self.dsample[0](x)
+            x = self.fromRGB[1](inputs) # (None,8,8,128)
+            x = self.conv2[2](x)        # (None,8,8,128)
+            x = self.conv2[3](x)        # (None,8,8,128)
+            s8 = self.dsample[0](x)     # (None,4,4,128)
             # Old path
-            x = self.dsample[1](inputs)
-            s4 = self.fromRGB[0](x)
+            x = self.dsample[1](inputs) # (None,4,4,128)
+            s4 = self.fromRGB[0](x)     # (None,4,4,128)
 
-            x = self.fade_in[0]([s4,s8])
+            x = self.fade_in[0]([s4,s8])# (None,4,4,128)
             x = self.conv2[0](x)
             x = self.conv2[1](x)
             x = self.flat(x)
