@@ -75,19 +75,19 @@ class Generator(keras.Model):
         up8 = self.usample[0](x)
         x = self.conv2[2](up8)
         x = self.conv2[3](x)
-        x = self.toRGB[1](x)
-        s8 = self.fade_in[0]([self.toRGB[0](up8),x])
+        x8 = self.toRGB[1](x)
+        s8 = self.fade_in[0]([self.toRGB[0](up8),x8])
 
         up16 = self.usample[1](x)
         x = self.conv2[4](up16)
         x = self.conv2[5](x)
-        x = self.toRGB[2](x)
-        s16 = self.fade_in[1]([self.toRGB[1](up16),x])
+        x16 = self.toRGB[2](x)
+        s16 = self.fade_in[1]([self.toRGB[1](up16),x16])
 
         up32 = self.usample[2](x)
         x = self.conv2[6](up32)
         x = self.conv2[7](x)
-        x = self.toRGB[3](x)
-        s32 = self.fade_in[2]([self.toRGB[2](up32),x])
+        x32 = self.toRGB[3](x)
+        s32 = self.fade_in[2]([self.toRGB[2](up32),x32])
         
         return [s4,s8,s16,s32]
