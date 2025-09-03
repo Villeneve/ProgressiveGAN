@@ -42,9 +42,6 @@ class Generator(keras.Model):
                 )
             )
         
-        # Achatamento;
-        self.flat = lay.Flatten(name='flat_layer')
-
         # Upsampling;
         self.usample = []
         for i in [8,16,32]:
@@ -93,3 +90,43 @@ class Generator(keras.Model):
         return [s4,s8,s16,s32]
     
 
+class Discriminator(keras.Model):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.dsample = [lay.AvgPool2D((2,2),name=f'downsample{i}') for i in [16,8,4]]
+        self.brain = lay.Dense(1,activation='sigmoid',name='Brain')
+        self.fromRGB = [
+            lay.Conv2D(
+                filters=128,
+                kernel_size=(3,3),
+                strides=(1,1),
+                padding='same',
+                activation='leaky_relu',
+                name=f'fromRGB{i}'
+            ) for i in [4,8,16,32]
+        ]
+        self.conv2 = []
+        for i in [4,8,16,32]:
+            self.conv2.append(
+                lay.Conv2D(
+                    filters=128,
+                    kernel_size=(3,3),
+                    strides=(1,1),
+                    padding='same',
+                    activation='leaky_relu',
+                    name=f'block{i}_conv0'
+                )
+            )
+            self.conv2.append(
+                lay.Conv2D(
+                    filters=128,
+                    kernel_size=(3,3),
+                    strides=(1,1),
+                    padding='same',
+                    activation='leaky_relu',
+                    name=f'block{i}_conv1'
+                )
+            )
+
+        self.flat = lay.Flatten(name='flat_layer')
