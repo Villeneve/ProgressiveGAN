@@ -2,13 +2,14 @@ import keras
 import keras.layers as lay
 import tensorflow as tf
 import numpy as np
-from src.layer import Fade_in
+from src.layer import Fade_in, MiniBatchSTD, PixelNorm
 
 class Discriminator(keras.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.dsample = [lay.AvgPool2D((2,2),name=f'downsample{i}') for i in ['4_0','4_1','8_0','8_1','16_0','16_1',]]
+        self.minibatchSTD = MiniBatchSTD()
         self.brain = lay.Dense(1,activation='sigmoid',name='Brain')
         self.fade_in = [Fade_in(name=f'fade_in_{i}') for i in ['4_8','8_16','16_32']]
         self.stage = tf.Variable(0, dtype=tf.int32, trainable=False)
@@ -55,7 +56,7 @@ class Discriminator(keras.Model):
         self.flat.build((None,4,4,128))
         # build convolutional layers
         self.conv2[0].build((None,4,4,128))
-        self.conv2[1].build((None,4,4,128))
+        self.conv2[1].build((None,4,4,129))
         self.conv2[2].build((None,8,8,128))
         self.conv2[3].build((None,8,8,128))
         self.conv2[4].build((None,16,16,128))
@@ -73,6 +74,7 @@ class Discriminator(keras.Model):
         def forward_4x4(inputs):
             x = self.fromRGB[0](inputs) # (None,4,4,128)
             x = self.conv2[0](x)        # (None,4,4,128)
+            x = self.minibatchSTD(x)
             x = self.conv2[1](x)        # (None,4,4,128)
             x = self.flat(x)            # (None,2048)
             x = self.brain(x)           # (None,1)
@@ -90,6 +92,7 @@ class Discriminator(keras.Model):
 
             x = self.fade_in[0]([s4,s8])# (None,4,4,128)
             x = self.conv2[0](x)
+            x = self.minibatchSTD(x)
             x = self.conv2[1](x)
             x = self.flat(x)
             x = self.brain(x)
@@ -110,6 +113,7 @@ class Discriminator(keras.Model):
             x = self.conv2[3](x)
             x = self.dsample[0](x)
             x = self.conv2[0](x)
+            x = self.minibatchSTD(x)
             x = self.conv2[1](x)
             x = self.flat(x)
             x = self.brain(x)
@@ -133,6 +137,7 @@ class Discriminator(keras.Model):
             x = self.conv2[3](x)
             x = self.dsample[0](x)
             x = self.conv2[0](x)
+            x = self.minibatchSTD(x)
             x = self.conv2[1](x)
             x = self.flat(x)
             x = self.brain(x)
