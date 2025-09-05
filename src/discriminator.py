@@ -10,7 +10,7 @@ class Discriminator(keras.Model):
 
         self.dsample = [lay.AvgPool2D((2,2),name=f'downsample{i}') for i in ['4_0','4_1','8_0','8_1','16_0','16_1',]]
         self.minibatchSTD = MiniBatchSTD()
-        self.brain = lay.Dense(1,activation='sigmoid',name='Brain')
+        self.brain = lay.Dense(1,activation='linear',name='Brain')
         self.fade_in = [Fade_in(name=f'fade_in_{i}') for i in ['4_8','8_16','16_32']]
         self.stage = tf.Variable(0, dtype=tf.int32, trainable=False)
         self.fromRGB = [
